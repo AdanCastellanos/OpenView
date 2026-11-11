@@ -1,0 +1,6 @@
+requests
+pillow
+pywebview
+numpy
+OpenEXR
+opencv-python-headless

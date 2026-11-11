@@ -1,0 +1,12 @@
+# Compilado (el .exe se publica en "Releases" de GitHub, no en el código)
+*.exe
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+
+# Temporales de la app
+*.part
