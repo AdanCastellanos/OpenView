@@ -148,3 +148,9 @@ Si el enlace solo tiene coordenadas (`@lat,lon`), se descarga la vista de calle 
 - Usa servicios internos de terceros que pueden cambiar sin aviso, y descargar imágenes así puede no
   estar permitido por sus condiciones de uso: úsalo para trabajo personal o de referencia y no
   redistribuyas las imágenes.
+
+## Licencia
+
+El código de esta aplicación se publica bajo la [licencia MIT](LICENSE): puedes usarlo, modificarlo y
+distribuirlo libremente, sin garantía. La licencia cubre solo el código, no las imágenes que descargues,
+que siguen siendo de sus autores y del servicio de mapas.
