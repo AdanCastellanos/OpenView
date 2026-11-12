@@ -153,6 +153,6 @@ Si el enlace solo tiene coordenadas (`@lat,lon`), se descarga la vista de calle 
 
 ## Licencia
 
-El código de esta aplicación se publica bajo la [licencia MIT](LICENSE): puedes usarlo, modificarlo y
-distribuirlo libremente, sin garantía. La licencia cubre solo el código, no las imágenes que descargues,
+[MIT](LICENSE) © 2026 Daniel Castellanos. Puedes usar el código, modificarlo y redistribuirlo, también en
+proyectos comerciales, siempre que mantengas el aviso de copyright y la licencia. Se ofrece tal cual, sin garantías. La licencia cubre solo el código, no las imágenes que descargues,
 que siguen siendo de sus autores y del servicio de mapas.
