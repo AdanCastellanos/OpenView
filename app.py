@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Pano360 Downloader - aplicación de escritorio.
+OpenView - aplicación de escritorio.
 
 Lanza un pequeño servidor local y abre la interfaz en una ventana propia
 (WebView2, el motor web integrado en Windows; si no, en el navegador).
-Toda la descarga la hace pano360.py en este mismo equipo.
+Toda la descarga la hace openview.py en este mismo equipo.
 """
 
 import json
@@ -25,18 +25,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import extras
 import hdri
-import pano360
+import openview
 
-APP_NAME = "Pano360 Downloader"
+APP_NAME = "OpenView"
 # Dentro del .exe los archivos de la interfaz se extraen en sys._MEIPASS
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 UI_FILE = os.path.join(HERE, "ui", "index.html")
 _APPDATA = os.environ.get("APPDATA", os.path.expanduser("~"))
-CONF_DIR = os.path.join(_APPDATA, "Pano360 Downloader")
+CONF_DIR = os.path.join(_APPDATA, "OpenView")
 CONF_FILE = os.path.join(CONF_DIR, "settings.json")
 
 DEFAULTS = {
-    "outdir": os.path.join(os.path.expanduser("~"), "Pictures", "Pano360 Downloader"),
+    "outdir": os.path.join(os.path.expanduser("~"), "Pictures", "OpenView"),
     "fmt": "jpg",
     "north": False,
     "json": False,
@@ -55,7 +55,7 @@ jobs = queue.Queue()
 last_ping = [time.time()]
 # Clave secreta por sesión: solo la página de la app puede dar órdenes al servidor
 TOKEN = secrets.token_urlsafe(24)
-friendly_error = pano360.friendly_error
+friendly_error = openview.friendly_error
 
 
 # ---------------------------------------------------------------- ajustes
@@ -102,7 +102,7 @@ def public(item):
 def level_rows(meta):
     """Matriz de nivelado para el visor (3 filas)."""
     try:
-        t, r = pano360.tilt_roll(meta)
+        t, r = openview.tilt_roll(meta)
         return extras.level_matrix(t, r).tolist() if (t or r) else None
     except Exception:  # noqa
         return None
@@ -117,7 +117,7 @@ def set_item(iid, **kw):
 def resolve_worker(iid):
     link = items[iid]["link"]
     try:
-        meta = pano360.resolve(link, log=lambda *_: None)
+        meta = openview.resolve(link, log=lambda *_: None)
         # ¿Ya está en la lista? (comprobar y guardar a la vez, para que dos enlaces
         # iguales pegados juntos no entren los dos)
         with lock:
@@ -136,7 +136,7 @@ def resolve_worker(iid):
 
 def make_thumb(iid, meta):
     try:
-        data = pano360.thumbnail(meta, 2048)
+        data = openview.thumbnail(meta, 2048)
         with lock:
             if iid in items and items[iid].get("meta", {}).get("id") == meta["id"]:
                 thumbs[iid] = data
@@ -158,7 +158,7 @@ def merge_dates(old, meta):
 def switch_worker(iid, panoid):
     """Cambia una tarjeta a otra fecha del mismo punto."""
     try:
-        meta = pano360.resolve(panoid, log=lambda *_: None)
+        meta = openview.resolve(panoid, log=lambda *_: None)
         with lock:
             it = items.get(iid)
             if not it:
@@ -177,7 +177,7 @@ def mini(panoid):
     """Miniatura pequeña de una fecha (una sola tesela del servicio)."""
     if panoid not in minis:
         from PIL import Image
-        data = pano360._fetch(pano360.TILE_URL.format(id=panoid, x=0, y=0, z=0), pano360.TILE_HEADERS, tries=2)
+        data = openview._fetch(openview.TILE_URL.format(id=panoid, x=0, y=0, z=0), openview.TILE_HEADERS, tries=2)
         im = Image.open(io.BytesIO(data)).convert("RGB")
         box = im.point(lambda v: 255 if v > 8 else 0).convert("L").getbbox()
         if box:
@@ -204,7 +204,7 @@ def view_texture(iid):
     cached = views.get(iid)
     if cached and cached[0] == meta["id"]:
         return cached[1]
-    data = pano360.thumbnail(meta, 4096)
+    data = openview.thumbnail(meta, 4096)
     views[iid] = (meta["id"], data)
     return data
 
@@ -218,7 +218,7 @@ def full_array(meta, progress=None):
                 progress(1.0)
             return _full_cache["img"]
         _full_cache.update(id=None, img=None)          # liberar el anterior antes de bajar otro
-        img = np.asarray(pano360.full_image(meta, progress))
+        img = np.asarray(openview.full_image(meta, progress))
         _full_cache.update(id=meta["id"], img=img)
         return img
 
@@ -229,19 +229,19 @@ def crop_worker(cid):
     it = items.get(job["item"])
     try:
         if not it or not it.get("meta"):
-            raise pano360.Pano360Error("El panorama ya no está en la lista.")
+            raise openview.OpenViewError("El panorama ya no está en la lista.")
         meta = it["meta"]
         job["stage"] = "Descargando el panorama completo…"
         eq = full_array(meta, lambda f: job.update(progress=round(0.8 * f, 3)))
         job.update(stage="Extrayendo el recorte…", progress=0.85)
         w, h = extras.crop_size(eq.shape[1], job["fov"], job["aspect"])
-        M = extras.level_matrix(*pano360.tilt_roll(meta)) if job["level"] else None
+        M = extras.level_matrix(*openview.tilt_roll(meta)) if job["level"] else None
         arr = extras.perspective_crop(eq, job["yaw"], job["pitch"], job["fov"], job["aspect"], M=M)
         outdir = job["outdir"]
         os.makedirs(outdir, exist_ok=True)
         az = round(math.degrees(-job["yaw"]) % 360)
         el = round(math.degrees(job["pitch"]))
-        base = "_".join(x for x in (meta.get("date") or "", pano360.safe(meta["id"])[:16],
+        base = "_".join(x for x in (meta.get("date") or "", openview.safe(meta["id"])[:16],
                                     f"recorte_{az:03d}_{el:+03d}_{round(job['fov'])}") if x)
         ext = job["fmt"]
         path = os.path.join(outdir, f"{base}.{ext}")
@@ -346,17 +346,17 @@ def download_worker():
         def progress(p, iid=iid):
             it = items.get(iid)
             if it is None or it.get("cancel"):
-                raise pano360.Cancelled("Descarga cancelada.")
+                raise openview.Cancelled("Descarga cancelada.")
             it["progress"] = round(p, 3)
 
         try:
-            path = pano360.process(
+            path = openview.process(
                 item["link"], opts["outdir"], opts["fmt"], opts["north"],
                 log=lambda *_: None, progress=progress,
                 meta=item["meta"], save_json=opts["json"],
                 nadir=opts["nadir"], fill=opts["fill"], level=opts["level"])
             set_item(iid, status="done", progress=1, path=path)
-        except pano360.Cancelled:
+        except openview.Cancelled:
             set_item(iid, status="ready", progress=0, cancel=False, notice="Descarga cancelada.")
         except Exception as e:  # noqa
             set_item(iid, status="error", error=friendly_error(e))
@@ -764,7 +764,7 @@ def selftest(report):
     from PIL import Image, ImageDraw
     lines = []
     try:
-        d = tempfile.mkdtemp(prefix="pano-selftest-")
+        d = tempfile.mkdtemp(prefix="openview-selftest-")
         src = os.path.join(d, "p.jpg")
         img = Image.new("RGB", (1024, 512), (90, 140, 210))
         ImageDraw.Draw(img).ellipse((300, 90, 310, 100), fill="white")

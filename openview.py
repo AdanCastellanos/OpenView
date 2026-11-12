@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Pano360 Downloader (pano360.py) - Descarga panoramas 360 de mapas (vista de calle oficial y
+OpenView (openview.py) - Descarga panoramas 360 de mapas (vista de calle oficial y
 fotos 360 de usuarios / "puntos aislados") a la máxima resolución
 disponible, como imagen equirectangular 2:1 lista para editar y usar en 3ds Max.
 
 Uso:
-    python pano360.py "<enlace de Maps>" -o "<carpeta>"
-    python pano360.py enlace1 enlace2 ... -o salida --formato png
-    python pano360.py --lista enlaces.txt -o salida
-    python pano360.py "<enlace>" -o salida --json   (guarda también los datos)
+    python openview.py "<enlace de Maps>" -o "<carpeta>"
+    python openview.py enlace1 enlace2 ... -o salida --formato png
+    python openview.py --lista enlaces.txt -o salida
+    python openview.py "<enlace>" -o salida --json   (guarda también los datos)
 
 Dependencias: requests, Pillow   (pip install requests pillow)
 """
@@ -35,7 +35,7 @@ SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": UA})
 
 
-class Pano360Error(Exception):
+class OpenViewError(Exception):
     pass
 
 
@@ -109,7 +109,7 @@ def parse_link(text):
     """Devuelve (panoid o None, lat o None, lon o None)."""
     text = text.strip().strip('"').strip("'")
     if not text:
-        raise Pano360Error("Enlace vacío.")
+        raise OpenViewError("Enlace vacío.")
     # ¿Es directamente un ID de panorama?
     if re.fullmatch(r"[A-Za-z0-9_\-]{20,}", text) and not text.startswith("http"):
         return text, None, None
@@ -137,7 +137,7 @@ def parse_link(text):
         if "viewpoint" in q:
             lat, lon = map(float, q["viewpoint"][0].split(","))
     if not panoid and lat is None:
-        raise Pano360Error(f"No encuentro un panorama en el enlace:\n  {url}")
+        raise OpenViewError(f"No encuentro un panorama en el enlace:\n  {url}")
     return panoid, lat, lon
 
 
@@ -196,7 +196,7 @@ def _parse_pano_msg(msg):
     if kind == "photo":
         hw = _get(msg, 2, 2)
         if not hw:
-            raise Pano360Error("El servicio de mapas no da el tamaño de esta foto.")
+            raise OpenViewError("El servicio de mapas no da el tamaño de esta foto.")
         sizes, tile = [(hw[1], hw[0])], None
     else:
         sizes = [(s[0][1], s[0][0]) for s in msg[2][3][0]]  # (ancho, alto) por zoom
@@ -231,14 +231,14 @@ def _parse_pano_msg(msg):
 def get_metadata_by_id(panoid):
     r = SESSION.get(_photometa_url(panoid), headers=MAPS_HEADERS, timeout=30)
     if r.status_code == 400:
-        raise Pano360Error(f"El servicio de mapas no reconoce el panorama {panoid}. Revisa que el enlace "
+        raise OpenViewError(f"El servicio de mapas no reconoce el panorama {panoid}. Revisa que el enlace "
                          "esté completo (copia la URL de la barra del navegador estando "
                          "dentro de la vista de calle).")
     r.raise_for_status()
     data = json.loads(r.text[4:])
     code = _get(data, 1, 0, 0, 0)
     if code not in (1, 3):
-        raise Pano360Error(f"El servicio de mapas no devuelve el panorama {panoid} (puede haber sido "
+        raise OpenViewError(f"El servicio de mapas no devuelve el panorama {panoid} (puede haber sido "
                          "retirado o el ID ha cambiado).")
     return _parse_pano_msg(data[1][0])
 
@@ -278,7 +278,7 @@ class Cancelled(Exception):
 
 def friendly_error(e):
     """Convierte cualquier excepción en un mensaje comprensible en español."""
-    if isinstance(e, (Pano360Error, Cancelled)):
+    if isinstance(e, (OpenViewError, Cancelled)):
         return str(e) or "Cancelado."
     if isinstance(e, requests.ConnectionError):
         return "No hay conexión a Internet o el servicio de mapas no responde. Revisa la conexión e inténtalo de nuevo."
@@ -308,14 +308,14 @@ def _fetch(url, headers=None, tries=4):
             if r.status_code == 200 and r.content:
                 return r.content
             if 400 <= r.status_code < 500 and r.status_code != 429:
-                raise Pano360Error(f"El servicio de mapas no ha entregado la imagen (error {r.status_code}).")
+                raise OpenViewError(f"El servicio de mapas no ha entregado la imagen (error {r.status_code}).")
             last = None
         except requests.RequestException as e:
             last = e
         time.sleep(1 + i)
     if last is not None:
         raise last
-    raise Pano360Error("El servicio de mapas no ha entregado la imagen tras varios intentos. Inténtalo más tarde.")
+    raise OpenViewError("El servicio de mapas no ha entregado la imagen tras varios intentos. Inténtalo más tarde.")
 
 
 def download_official(meta, zoom, log, progress=None):
@@ -372,7 +372,7 @@ def download_third_party(meta, log, zoom=-1):
             raise
         except Exception as e:  # noqa
             err = e
-    raise Pano360Error(f"No se pudo descargar la foto 360 ({friendly_error(err)})")
+    raise OpenViewError(f"No se pudo descargar la foto 360 ({friendly_error(err)})")
 
 
 def roll_to_north(img, heading_deg):
@@ -401,7 +401,7 @@ def resolve(link, log=print):
         log(f"  Sin ID en el enlace; buscando el panorama más cercano a {lat},{lon}")
         meta = find_nearest(lat, lon) or find_nearest(lat, lon, third_party=True)
         if not meta:
-            raise Pano360Error("No hay vista de calle en esa ubicación.")
+            raise OpenViewError("No hay vista de calle en esa ubicación.")
     meta["third_party"] = is_third_party(meta["id"])
     meta.setdefault("kind", "pano")
     w, h = meta["sizes"][-1]
@@ -454,7 +454,7 @@ def download_photo(meta, log):
         except Exception as e:  # noqa
             err = e
     if best is None:
-        raise Pano360Error(f"No se pudo descargar la foto ({friendly_error(err)})")
+        raise OpenViewError(f"No se pudo descargar la foto ({friendly_error(err)})")
     return best
 
 
@@ -638,7 +638,7 @@ def run_batch(links, outdir, fmt, north, max_width, log, save_json=False, nadir=
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Pano360 Downloader - descarga panoramas 360 "
+    ap = argparse.ArgumentParser(description="OpenView - descarga panoramas 360 "
                                              "de mapas (vista de calle y fotos 360) a "
                                              "máxima resolución. Para la ventana, abre app.py.")
     ap.add_argument("enlaces", nargs="*", help="Enlaces de la aplicación de mapas o IDs de panorama")

@@ -1,8 +1,8 @@
 """
-Pruebas de Pano360 Downloader.
+Pruebas de OpenView.
 
     python -m unittest discover -s tests -v          (todas, necesita Internet)
-    set PANO_OFFLINE=1 & python -m unittest discover -s tests -v   (solo las que no usan red)
+    set OPENVIEW_OFFLINE=1 & python -m unittest discover -s tests -v   (solo las que no usan red)
 
 No tocan tu configuración real: usan una carpeta temporal como APPDATA.
 """
@@ -22,19 +22,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 # Configuración aislada ANTES de importar app
-TMP = tempfile.mkdtemp(prefix="pano-test-")
+TMP = tempfile.mkdtemp(prefix="openview-test-")
 os.environ["APPDATA"] = os.path.join(TMP, "appdata")
 
 import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
-import pano360  # noqa: E402
+import openview  # noqa: E402
 import hdri  # noqa: E402
 import extras  # noqa: E402
 import app  # noqa: E402
 import math  # noqa: E402
 
-OFFLINE = os.environ.get("PANO_OFFLINE") == "1"
-net = unittest.skipIf(OFFLINE, "sin red (PANO_OFFLINE=1)")
+OFFLINE = os.environ.get("OPENVIEW_OFFLINE") == "1"
+net = unittest.skipIf(OFFLINE, "sin red (OPENVIEW_OFFLINE=1)")
 
 OFFICIAL_ID = "OhR7Uw9BShEzj2LCYE3y-g"          # Puerta del Sol, Madrid
 USER360_ID = "CIHM0ogKEICAgIDhx_qQOg"       # Torre Eiffel
@@ -51,76 +51,76 @@ def tearDownModule():
 # ============================================================ sin red
 class TestParseLink(unittest.TestCase):
     def test_official_url(self):
-        self.assertEqual(pano360.parse_link(OFFICIAL_URL), (OFFICIAL_ID, 40.4168, -3.7038))
+        self.assertEqual(openview.parse_link(OFFICIAL_URL), (OFFICIAL_ID, 40.4168, -3.7038))
 
     def test_user360_url(self):
-        pid, lat, lon = pano360.parse_link(USER360_URL)
+        pid, lat, lon = openview.parse_link(USER360_URL)
         self.assertEqual(pid, USER360_ID)
-        self.assertTrue(pano360.is_third_party(pid))
+        self.assertTrue(openview.is_third_party(pid))
 
     def test_place_url_with_feature_id(self):
         url = ("https://www.google.com/maps/place/Puerta+del+Sol/@40.4168,-3.7038,3a,75y,90t/"
                "data=!3m8!1e1!3m6!1s" + OFFICIAL_ID + "!2e0!5s20250501T000000!7i16384!8i8192"
                "!4m6!3m5!1s0xd42287e1d9b7d67:0x8f2d1c7c1f3b0b0a!8m2!3d40.41!4d-3.70")
-        self.assertEqual(pano360.parse_link(url)[0], OFFICIAL_ID)
+        self.assertEqual(openview.parse_link(url)[0], OFFICIAL_ID)
 
     def test_quotes_and_spaces(self):
-        self.assertEqual(pano360.parse_link(f'  "{OFFICIAL_URL}"  ')[0], OFFICIAL_ID)
+        self.assertEqual(openview.parse_link(f'  "{OFFICIAL_URL}"  ')[0], OFFICIAL_ID)
 
     def test_without_scheme(self):
-        self.assertEqual(pano360.parse_link(OFFICIAL_URL.replace("https://", ""))[0], OFFICIAL_ID)
+        self.assertEqual(openview.parse_link(OFFICIAL_URL.replace("https://", ""))[0], OFFICIAL_ID)
 
     def test_raw_id(self):
-        self.assertEqual(pano360.parse_link(OFFICIAL_ID), (OFFICIAL_ID, None, None))
+        self.assertEqual(openview.parse_link(OFFICIAL_ID), (OFFICIAL_ID, None, None))
 
     def test_coordinates_only(self):
-        self.assertEqual(pano360.parse_link("https://www.google.com/maps/@40.4168,-3.7038,3a,75y,90t"),
+        self.assertEqual(openview.parse_link("https://www.google.com/maps/@40.4168,-3.7038,3a,75y,90t"),
                          (None, 40.4168, -3.7038))
 
     def test_api_style_url(self):
         url = "https://www.google.com/maps/@?api=1&map_action=pano&pano=" + OFFICIAL_ID
-        self.assertEqual(pano360.parse_link(url)[0], OFFICIAL_ID)
+        self.assertEqual(openview.parse_link(url)[0], OFFICIAL_ID)
 
     def test_viewpoint_url(self):
         url = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.4168,-3.7038"
-        self.assertEqual(pano360.parse_link(url), (None, 40.4168, -3.7038))
+        self.assertEqual(openview.parse_link(url), (None, 40.4168, -3.7038))
 
     def test_consent_redirect(self):
         from urllib.parse import quote
         url = "https://consent.google.com/m?continue=" + quote(OFFICIAL_URL, safe="")
-        self.assertEqual(pano360.parse_link(url)[0], OFFICIAL_ID)
+        self.assertEqual(openview.parse_link(url)[0], OFFICIAL_ID)
 
     def test_empty(self):
-        with self.assertRaises(pano360.Pano360Error):
-            pano360.parse_link("   ")
+        with self.assertRaises(openview.OpenViewError):
+            openview.parse_link("   ")
 
     def test_link_without_panorama(self):
-        with self.assertRaises(pano360.Pano360Error):
-            pano360.parse_link("https://www.google.com/maps/search/restaurantes")
+        with self.assertRaises(openview.OpenViewError):
+            openview.parse_link("https://www.google.com/maps/search/restaurantes")
 
 
 class TestHelpers(unittest.TestCase):
     def test_third_party(self):
-        self.assertFalse(pano360.is_third_party(OFFICIAL_ID))
-        self.assertTrue(pano360.is_third_party(USER360_ID))
-        self.assertTrue(pano360.is_third_party("AF1QipN" + "x" * 30))
+        self.assertFalse(openview.is_third_party(OFFICIAL_ID))
+        self.assertTrue(openview.is_third_party(USER360_ID))
+        self.assertTrue(openview.is_third_party("AF1QipN" + "x" * 30))
 
     def test_protobuf_url(self):
-        self.assertEqual(pano360._pb_msg({1: {1: "a", 2: 5}, 2: pano360.Enum_(3), 3: True})[1],
+        self.assertEqual(openview._pb_msg({1: {1: "a", 2: 5}, 2: openview.Enum_(3), 3: True})[1],
                          "!1m2!1sa!2i5!2e3!3b1")
 
     def test_safe_name(self):
-        self.assertEqual(pano360.safe("a/b:c*d"), "a_b_c_d")
+        self.assertEqual(openview.safe("a/b:c*d"), "a_b_c_d")
 
     def test_roll_to_north(self):
         # 360 columnas, la columna x vale x. El centro (180) mira al rumbo 90,
         # así que el norte está en la columna 90 y debe acabar en el centro.
         img = Image.new("L", (360, 2))
         img.putdata([x for _ in range(2) for x in range(360)])
-        out = pano360.roll_to_north(img, 90)
+        out = openview.roll_to_north(img, 90)
         self.assertEqual(out.getpixel((180, 0)), 90)
         self.assertEqual(out.size, img.size)
-        self.assertIs(pano360.roll_to_north(img, 0), img)
+        self.assertIs(openview.roll_to_north(img, 0), img)
 
 
 def fake_meta(third_party=False, w=1024, h=512):
@@ -135,8 +135,8 @@ class TestProcessOffline(unittest.TestCase):
 
     def run_process(self, **kw):
         img = Image.new("RGB", (1024, 512), (10, 120, 200))
-        with mock.patch.object(pano360, "download_official", return_value=(img, None)):
-            return pano360.process("x", self.out, meta=fake_meta(), log=lambda *_: None, **kw)
+        with mock.patch.object(openview, "download_official", return_value=(img, None)):
+            return openview.process("x", self.out, meta=fake_meta(), log=lambda *_: None, **kw)
 
     def test_formats(self):
         for fmt in ("jpg", "png", "tif"):
@@ -164,8 +164,8 @@ class TestProcessOffline(unittest.TestCase):
         img = Image.new("RGB", (64, 32))
         buf = io.BytesIO()
         img.save(buf, "WEBP")
-        with mock.patch.object(pano360, "download_third_party", return_value=(img, buf.getvalue())):
-            path = pano360.process("x", self.out, meta=fake_meta(True, 64, 32), log=lambda *_: None)
+        with mock.patch.object(openview, "download_third_party", return_value=(img, buf.getvalue())):
+            path = openview.process("x", self.out, meta=fake_meta(True, 64, 32), log=lambda *_: None)
         self.assertEqual(Image.open(path).format, "JPEG", "guarda bytes no-JPEG con extensión .jpg")
 
 
@@ -173,39 +173,39 @@ class TestProcessOffline(unittest.TestCase):
 @net
 class TestLive(unittest.TestCase):
     def test_official_metadata(self):
-        m = pano360.get_metadata_by_id(OFFICIAL_ID)
+        m = openview.get_metadata_by_id(OFFICIAL_ID)
         self.assertEqual(m["sizes"][-1], (16384, 8192))
         self.assertEqual(m["tile"], (512, 512))
         self.assertIsNotNone(m["heading"])
 
     def test_user360_metadata(self):
-        m = pano360.get_metadata_by_id(USER360_ID)
+        m = openview.get_metadata_by_id(USER360_ID)
         self.assertEqual(m["sizes"][-1], (5660, 2830))
         self.assertTrue(m["uploader"])
 
     def test_invalid_id_gives_clear_error(self):
-        with self.assertRaises(pano360.Pano360Error) as cm:
-            pano360.get_metadata_by_id("AAAAAAAAAAAAAAAAAAAAAA")
+        with self.assertRaises(openview.OpenViewError) as cm:
+            openview.get_metadata_by_id("AAAAAAAAAAAAAAAAAAAAAA")
         self.assertIn("panorama", str(cm.exception))
 
     def test_nearest(self):
-        m = pano360.resolve("https://www.google.com/maps/@40.4168,-3.7038,3a,75y,90t", log=lambda *_: None)
+        m = openview.resolve("https://www.google.com/maps/@40.4168,-3.7038,3a,75y,90t", log=lambda *_: None)
         self.assertFalse(m["third_party"])
 
     def test_nowhere(self):
-        with self.assertRaises(pano360.Pano360Error):
-            pano360.resolve("https://www.google.com/maps/@0.0001,-30.0001,3a,75y,90t", log=lambda *_: None)
+        with self.assertRaises(openview.OpenViewError):
+            openview.resolve("https://www.google.com/maps/@0.0001,-30.0001,3a,75y,90t", log=lambda *_: None)
 
     def test_thumbnails(self):
         for pid in (OFFICIAL_ID, USER360_ID):
-            m = pano360.get_metadata_by_id(pid)
-            im = Image.open(io.BytesIO(pano360.thumbnail(m, 1024)))
+            m = openview.get_metadata_by_id(pid)
+            im = Image.open(io.BytesIO(openview.thumbnail(m, 1024)))
             self.assertLessEqual(im.width, 1024)
             self.assertAlmostEqual(im.width / im.height, 2, delta=0.05)
 
     def test_download_official_small_has_no_black_tiles(self):
         out = tempfile.mkdtemp(dir=TMP)
-        path = pano360.process(OFFICIAL_URL, out, max_width=2048, log=lambda *_: None)
+        path = openview.process(OFFICIAL_URL, out, max_width=2048, log=lambda *_: None)
         im = Image.open(path).convert("L")
         self.assertEqual(im.size, (2048, 1024))
         # cada tesela de 512 debe tener contenido (antes salían huecos negros)
@@ -215,7 +215,7 @@ class TestLive(unittest.TestCase):
 
     def test_download_user360_full(self):
         out = tempfile.mkdtemp(dir=TMP)
-        path = pano360.process(USER360_URL, out, log=lambda *_: None)
+        path = openview.process(USER360_URL, out, log=lambda *_: None)
         self.assertEqual(Image.open(path).size, (5660, 2830))
 
 
@@ -261,7 +261,7 @@ class TestAppOffline(unittest.TestCase):
     def test_page_and_state(self):
         code, html = self.s.call("/")
         self.assertEqual(code, 200)
-        self.assertIn(b"Pano360", html)
+        self.assertIn(b"OpenView", html)
         code, st = self.s.call("/api/state")
         self.assertEqual(code, 200)
         self.assertIn("settings", st)
@@ -403,7 +403,7 @@ class TestHistory(unittest.TestCase):
         m5[8] = [[1, [2019, 5]], [2, [2008, 8]], [9, [2000, 1]]]  # el 9 no existe: se ignora
         msg = [None, [None, "AAA"], [None, None, None, [[[[256, 512]]], [512, 512]]], None, None,
                [m5], [None] * 7 + [[2025, 5]]]
-        meta = pano360._parse_pano_msg(msg)
+        meta = openview._parse_pano_msg(msg)
         self.assertEqual(meta["history"], [{"id": "BBB", "date": "2019-05"}, {"id": "CCC", "date": "2008-08"}])
 
     def test_merge_dates_sorted_and_unique(self):
@@ -661,12 +661,12 @@ class TestNadirAndFill(unittest.TestCase):
         out = tempfile.mkdtemp(dir=TMP)
         band = Image.fromarray(np.asarray(synthetic_pano(1024))[170:342])
         meta = fake_meta(True, 1024, 172)
-        with mock.patch.object(pano360, "download_third_party", return_value=(band, None)):
-            p1 = pano360.process("x", out, meta=meta, log=lambda *_: None)
+        with mock.patch.object(openview, "download_third_party", return_value=(band, None)):
+            p1 = openview.process("x", out, meta=meta, log=lambda *_: None)
             self.assertEqual(Image.open(p1).size, (1024, 512))
-            p2 = pano360.process("x", out, meta=meta, log=lambda *_: None, nadir=True)
+            p2 = openview.process("x", out, meta=meta, log=lambda *_: None, nadir=True)
             self.assertTrue(p2.endswith("_nadir.jpg"))
-            p3 = pano360.process("x", out, meta=meta, log=lambda *_: None, fill=False)
+            p3 = openview.process("x", out, meta=meta, log=lambda *_: None, fill=False)
             self.assertEqual(Image.open(p3).size, (1024, 172))
 
 
@@ -683,7 +683,7 @@ class TestAppCropAndSettings(unittest.TestCase):
         app.items[iid] = {"id": iid, "link": "x", "status": "ready", "meta": fake_meta(w=2048, h=1024)}
         app.order.insert(0, iid)
         pano = Image.fromarray(marker_pano(2048, 0.5, 0.5))
-        with mock.patch.object(pano360, "full_image", return_value=pano) as fi:
+        with mock.patch.object(openview, "full_image", return_value=pano) as fi:
             cid = s.call("/api/crop", {"id": iid, "yaw": 0, "pitch": 0, "fov": 30, "aspect": 1.5})[1]["cid"]
             st = s.wait(lambda st: st["crops"][cid]["status"] != "working")
             # segundo recorte del mismo panorama: no vuelve a descargarlo
@@ -742,16 +742,16 @@ class TestPhotos(unittest.TestCase):
         m5[1] = [[None, None, 39.56, 2.66]]
         msg = [None, [10, PHOTO_ID], [10, 3, [3024, 4032]], None, None, [m5],
                [None] * 7 + [[2023, 4, 19]]]
-        meta = pano360._parse_pano_msg(msg)
+        meta = openview._parse_pano_msg(msg)
         self.assertEqual(meta["kind"], "photo")
         self.assertEqual(meta["sizes"], [(4032, 3024)])
         self.assertIsNone(meta["tile"])
         self.assertEqual(meta["date"], "2023-04-19")
 
     def test_image_url_in_link(self):
-        self.assertTrue(pano360.link_image_url(PHOTO_URL).startswith("https://lh3.googleusercontent.com/p/"))
-        self.assertIsNone(pano360.link_image_url(OFFICIAL_URL))
-        self.assertEqual(pano360.parse_link(PHOTO_URL)[0], PHOTO_ID)
+        self.assertTrue(openview.link_image_url(PHOTO_URL).startswith("https://lh3.googleusercontent.com/p/"))
+        self.assertIsNone(openview.link_image_url(OFFICIAL_URL))
+        self.assertEqual(openview.parse_link(PHOTO_URL)[0], PHOTO_ID)
 
     def test_save_photo_keeps_original_jpeg(self):
         out = tempfile.mkdtemp(dir=TMP)
@@ -759,23 +759,23 @@ class TestPhotos(unittest.TestCase):
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=91)
         meta = {**fake_meta(True, 400, 300), "kind": "photo", "sizes": [(400, 300)]}
-        with mock.patch.object(pano360, "download_photo", return_value=(img, buf.getvalue())):
-            p = pano360.process("x", out, meta=meta, log=lambda *_: None, north=True, nadir=True, level=True)
+        with mock.patch.object(openview, "download_photo", return_value=(img, buf.getvalue())):
+            p = openview.process("x", out, meta=meta, log=lambda *_: None, north=True, nadir=True, level=True)
         self.assertTrue(p.endswith("_foto.jpg"))
         with open(p, "rb") as f:
             self.assertEqual(f.read(), buf.getvalue(), "recomprime la foto original")
 
     def test_photo_has_no_tilt_and_no_partial(self):
-        self.assertEqual(pano360.tilt_roll({"kind": "photo", "pitch": 95, "roll": 3}), (0.0, 0.0))
+        self.assertEqual(openview.tilt_roll({"kind": "photo", "pitch": 95, "roll": 3}), (0.0, 0.0))
 
 
 class TestLevel(unittest.TestCase):
     def test_tilt_roll_normalized(self):
-        t, r = pano360.tilt_roll({"kind": "pano", "pitch": 92.8, "roll": 355.0})
+        t, r = openview.tilt_roll({"kind": "pano", "pitch": 92.8, "roll": 355.0})
         self.assertAlmostEqual(t, 2.8, places=3)
         self.assertAlmostEqual(r, -5.0, places=3)
-        self.assertEqual(pano360.tilt_roll({"kind": "pano", "pitch": 140, "roll": 0}), (0.0, 0.0))
-        self.assertEqual(pano360.tilt_roll({"kind": "pano", "pitch": None, "roll": None}), (0.0, 0.0))
+        self.assertEqual(openview.tilt_roll({"kind": "pano", "pitch": 140, "roll": 0}), (0.0, 0.0))
+        self.assertEqual(openview.tilt_roll({"kind": "pano", "pitch": None, "roll": None}), (0.0, 0.0))
 
     def test_matrix_is_rotation(self):
         M = extras.level_matrix(-5.5, 2.9)
@@ -811,10 +811,10 @@ class TestLevel(unittest.TestCase):
         out = tempfile.mkdtemp(dir=TMP)
         img = Image.fromarray(marker_pano(1024, 0.5, 0.3))
         meta = {**fake_meta(), "pitch": 95.0, "roll": 2.0}
-        with mock.patch.object(pano360, "download_official", return_value=(img, None)):
-            a = pano360.process("x", out, meta=meta, log=lambda *_: None, level=False, fmt="png")
+        with mock.patch.object(openview, "download_official", return_value=(img, None)):
+            a = openview.process("x", out, meta=meta, log=lambda *_: None, level=False, fmt="png")
             ra = red_center(np.asarray(Image.open(a)))
-            b = pano360.process("x", out, meta=meta, log=lambda *_: None, level=True, fmt="png")
+            b = openview.process("x", out, meta=meta, log=lambda *_: None, level=True, fmt="png")
             rb = red_center(np.asarray(Image.open(b)))
         self.assertAlmostEqual(ra[1], 0.3, delta=0.01)
         self.assertGreater(abs(rb[1] - 0.3), 0.01, "no ha nivelado")
@@ -823,11 +823,11 @@ class TestLevel(unittest.TestCase):
 @net
 class TestPhotosLive(unittest.TestCase):
     def test_photo_full_size(self):
-        meta = pano360.resolve(PHOTO_URL, log=lambda *_: None)
+        meta = openview.resolve(PHOTO_URL, log=lambda *_: None)
         self.assertEqual(meta["kind"], "photo")
         self.assertFalse(meta["partial"])
         out = tempfile.mkdtemp(dir=TMP)
-        p = pano360.process(PHOTO_URL, out, meta=meta, log=lambda *_: None)
+        p = openview.process(PHOTO_URL, out, meta=meta, log=lambda *_: None)
         self.assertEqual(Image.open(p).size, (4032, 3024))
 
     def test_app_photo_card_and_no_crop(self):
@@ -842,7 +842,7 @@ class TestPhotosLive(unittest.TestCase):
         s.call("/api/remove", {"id": ids[0]})
 
     def test_official_has_level_matrix(self):
-        meta = pano360.resolve(OFFICIAL_ID, log=lambda *_: None)
+        meta = openview.resolve(OFFICIAL_ID, log=lambda *_: None)
         rows = app.level_rows(meta)
         self.assertEqual(len(rows), 3)
         self.assertFalse(np.allclose(rows, np.eye(3)))
@@ -851,22 +851,22 @@ class TestPhotosLive(unittest.TestCase):
 class TestFriendlyErrors(unittest.TestCase):
     def test_client_errors_are_not_retried(self):
         r = mock.Mock(status_code=404, content=b"")
-        with mock.patch.object(pano360.SESSION, "get", return_value=r) as g:
+        with mock.patch.object(openview.SESSION, "get", return_value=r) as g:
             t = time.time()
-            with self.assertRaises(pano360.Pano360Error):
-                pano360._fetch("https://x")
+            with self.assertRaises(openview.OpenViewError):
+                openview._fetch("https://x")
         self.assertEqual(g.call_count, 1)
         self.assertLess(time.time() - t, 1)
 
     def test_folder_errors(self):
-        self.assertIn("carpeta", pano360.friendly_error(PermissionError("x")).lower())
-        self.assertIn("carpeta", pano360.friendly_error(FileNotFoundError("x")).lower())
+        self.assertIn("carpeta", openview.friendly_error(PermissionError("x")).lower())
+        self.assertIn("carpeta", openview.friendly_error(FileNotFoundError("x")).lower())
 
     def test_offline_message(self):
         import requests
-        with mock.patch.object(pano360.SESSION, "get", side_effect=requests.ConnectionError("boom")):
+        with mock.patch.object(openview.SESSION, "get", side_effect=requests.ConnectionError("boom")):
             with self.assertRaises(Exception) as cm:
-                pano360.resolve(OFFICIAL_URL, log=lambda *_: None)
+                openview.resolve(OFFICIAL_URL, log=lambda *_: None)
         msg = app.friendly_error(cm.exception) if hasattr(app, "friendly_error") else str(cm.exception)
         self.assertIn("Internet", msg, "mensaje técnico sin conexión: " + msg)
 

@@ -1,4 +1,6 @@
-# Pano360 Downloader
+<p align="center"><img src="assets/logo.svg" width="120" alt="Logo de OpenView"></p>
+
+<h1 align="center">OpenView</h1>
 
 Descargador de panoramas 360 y fotos de aplicaciones de mapas, a **máxima resolución**:
 
@@ -13,7 +15,7 @@ en un *VRayDome* o *CoronaSky*, etc.
 
 ## Aplicación
 
-Doble clic en **Pano360 Downloader.exe**. No necesita Python y puedes copiarlo a cualquier
+Doble clic en **OpenView.exe**. No necesita Python y puedes copiarlo a cualquier
 carpeta, anclarlo a la barra de tareas o crear un acceso directo en el escritorio. Se abre en su propia ventana:
 
 1. Pega uno o varios enlaces (basta con Ctrl+V en cualquier parte de la ventana).
@@ -84,19 +86,19 @@ La ventana usa WebView2, el motor web integrado en Windows: no inicia sesión co
 no sincroniza nada y no comparte historial con el navegador. Si WebView2 no estuviera disponible, se
 abre en el navegador por defecto. Todo se ejecuta en tu equipo. Si cierras la ventana con descargas en
 curso, te pregunta antes. La app recuerda el tamaño y la posición de la ventana, el tema claro u oscuro
-y todas las opciones; se guardan en `%APPDATA%\Pano360 Downloader`.
+y todas las opciones; se guardan en `%APPDATA%\OpenView`.
 
 ## Archivos
 
 | Archivo | Para qué sirve |
 |---|---|
-| `Pano360 Downloader.exe` | La aplicación (en *Releases*). Es lo único que necesitas para usarla |
-| `pano360.py` | El motor de descarga; también se usa desde la terminal |
+| `OpenView.exe` | La aplicación (en *Releases*). Es lo único que necesitas para usarla |
+| `openview.py` | El motor de descarga; también se usa desde la terminal |
 | `hdri.py` | El conversor a HDRI; también se usa desde la terminal |
 | `extras.py` | Recortes en perspectiva, nivelado, tapar el suelo y completar parciales |
 | `app.py`, `ui/index.html` | La ventana de la aplicación |
 | `Abrir con Python.bat` | Abre la aplicación con Python, sin el .exe (útil si cambias el código) |
-| `build_exe.bat`, `assets/` | Vuelven a crear el .exe, su icono y lo que necesita empaquetar; solo si se cambia el código |
+| `build_exe.bat`, `assets/` | Vuelven a crear el .exe, el logo (`logo.svg`, `logo.png`, `icon.ico`) y lo que necesita empaquetar; solo si se cambia el código |
 | `tests/` | Pruebas automáticas: `python -m unittest discover -s tests -v` |
 | `requirements.txt` | Librerías de Python necesarias para los scripts |
 
@@ -105,9 +107,9 @@ y todas las opciones; se guardan en `%APPDATA%\Pano360 Downloader`.
 También puedes usarlo sin ventana:
 
 ```
-python pano360.py "<enlace>" -o "<carpeta>"
-python pano360.py enlace1 enlace2 -o salida -f png
-python pano360.py --lista enlaces.txt -o salida
+python openview.py "<enlace>" -o "<carpeta>"
+python openview.py enlace1 enlace2 -o salida -f png
+python openview.py --lista enlaces.txt -o salida
 ```
 
 | Opción | Qué hace |
@@ -144,7 +146,7 @@ Si el enlace solo tiene coordenadas (`@lat,lon`), se descarga la vista de calle 
 
 - El .exe funciona solo. Para usar los scripts hace falta Python 3 con las librerías de
   `requirements.txt` (`pip install -r requirements.txt`).
-- Para comprobar que un .exe recién creado trae todo: `"Pano360 Downloader.exe" --selftest informe.txt`.
+- Para comprobar que un .exe recién creado trae todo: `"OpenView.exe" --selftest informe.txt`.
 - Usa servicios internos de terceros que pueden cambiar sin aviso, y descargar imágenes así puede no
   estar permitido por sus condiciones de uso: úsalo para trabajo personal o de referencia y no
   redistribuyas las imágenes.
